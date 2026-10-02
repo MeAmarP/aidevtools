@@ -5,8 +5,8 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: siteUrl(),
   title: {
-    default: "AI Dev Tools — Free AI calculators",
-    template: "%s | AI Dev Tools",
+    default: "aidevtools.com — Free AI calculators",
+    template: "%s | aidevtools.com",
   },
   description:
     "Free browser-based calculators for LLM memory, GPU capacity, quantization, API costs, and inference workloads.",
@@ -22,18 +22,16 @@ export default function RootLayout({
         </a>
         <header className="nav">
           <Link className="brand" href="/">
-            <span className="logo">ai</span> dev tools
-            <span className="beta">BETA</span>
+            aidevtools.com
           </Link>
-          <nav aria-label="Main navigation">
-            <Link href="/#tools">Tools</Link>
-            <Link href="/about">About</Link>
-            <a href="https://github.com/MeAmarP/aidevtools">GitHub ↗</a>
-          </nav>
+          <p className="tagline">Practical calculators for planning LLM deployments</p>
+          <a className="github-link" href="https://github.com/MeAmarP/aidevtools">
+            GitHub ↗
+          </a>
         </header>
         <main id="main">{children}</main>
         <footer>
-          <span>AI Dev Tools · Built for the work behind AI.</span>
+          <span>aidevtools.com</span>
           <div>
             <Link href="/privacy">Privacy</Link>
             <a href="https://github.com/MeAmarP/aidevtools/issues">

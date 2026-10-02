@@ -53,6 +53,12 @@ const architecture = [
   "cacheBytes",
   "overhead",
 ];
+
+function resultParts(value: string) {
+  const match = value.match(/^(-?[\d,.]+(?:\.\d+)?)\s+(.+)$/);
+  return match ? { amount: match[1], unit: match[2] } : null;
+}
+
 export default function Calculator({ slug }: { slug: ToolSlug }) {
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -145,8 +151,10 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
     <div className="calculator">
       <div className="inputs">
         <div className="calc-heading">
-          <h2>Configure your estimate</h2>
+          <span>Parameter</span>
+          <span>Value</span>
           <button
+            type="button"
             onClick={() =>
               setValues(
                 Object.fromEntries(
@@ -161,48 +169,50 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
         <div className="fields">
           {fields.map((k) => (
             <label key={k} htmlFor={k}>
-              {labels[k]}
-              {k === "bits" || k === "cacheBytes" ? (
-                <select
-                  id={k}
-                  value={values[k]}
-                  onChange={(e) =>
-                    setValues({ ...values, [k]: e.target.value })
-                  }
-                >
-                  {(k === "bits" ? [4, 5, 6, 8, 16, 32] : [1, 2, 4]).map(
-                    (n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ),
-                  )}
-                </select>
-              ) : (
-                <input
-                  id={k}
-                  type="number"
-                  min={0}
-                  step={
-                    [
-                      "parametersB",
-                      "overhead",
-                      "gpu",
-                      "reserved",
-                      "inputRate",
-                      "outputRate",
-                      "rps",
-                      "latency",
-                    ].includes(k)
-                      ? "any"
-                      : 1
-                  }
-                  value={values[k]}
-                  onChange={(e) =>
-                    setValues({ ...values, [k]: e.target.value })
-                  }
-                />
-              )}
+              <span>{labels[k]}</span>
+              <span className="field-control">
+                {k === "bits" || k === "cacheBytes" ? (
+                  <select
+                    id={k}
+                    value={values[k]}
+                    onChange={(e) =>
+                      setValues({ ...values, [k]: e.target.value })
+                    }
+                  >
+                    {(k === "bits" ? [4, 5, 6, 8, 16, 32] : [1, 2, 4]).map(
+                      (n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                ) : (
+                  <input
+                    id={k}
+                    type="number"
+                    min={0}
+                    step={
+                      [
+                        "parametersB",
+                        "overhead",
+                        "gpu",
+                        "reserved",
+                        "inputRate",
+                        "outputRate",
+                        "rps",
+                        "latency",
+                      ].includes(k)
+                        ? "any"
+                        : 1
+                    }
+                    value={values[k]}
+                    onChange={(e) =>
+                      setValues({ ...values, [k]: e.target.value })
+                    }
+                  />
+                )}
+              </span>
             </label>
           ))}
         </div>
@@ -211,19 +221,31 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
         </p>
       </div>
       <div className="results" aria-live="polite" aria-atomic="true">
-        <div className="eyebrow">YOUR ESTIMATE</div>
+        <div className="eyebrow">Estimated memory usage</div>
         {error ? (
           <p role="alert" className="error">
             {error}
           </p>
         ) : (
           <dl>
-            {rows.map(([label, value]) => (
-              <div key={label}>
-                <dt>{label}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
+            {rows.map(([label, value]) => {
+              const parts = resultParts(value);
+              return (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>
+                    {parts ? (
+                      <>
+                        <span>{parts.amount}</span>
+                        <small>{parts.unit}</small>
+                      </>
+                    ) : (
+                      value
+                    )}
+                  </dd>
+                </div>
+              );
+            })}
           </dl>
         )}
         <p>
