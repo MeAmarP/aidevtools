@@ -110,6 +110,15 @@ main { max-width: 1440px; margin: 0 auto; }
 
 .tool-header { margin-bottom: 34px; }
 
+.tool-question {
+  margin: 0 0 8px;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+
 .tool-header h1 {
   margin: 0 0 4px;
   font-family: Georgia, "Times New Roman", serif;
@@ -134,6 +143,50 @@ main { max-width: 1440px; margin: 0 auto; }
 }
 
 .inputs { min-width: 0; }
+
+.mode-bar {
+  min-height: 42px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--soft-rule);
+  color: #485169;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.mode-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid #c5cad3;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.mode-switch button {
+  min-width: 76px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--muted);
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.mode-switch button:hover { color: var(--ink); }
+
+.mode-switch button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
 
 .calc-heading {
   display: grid;
@@ -175,6 +228,64 @@ main { max-width: 1440px; margin: 0 auto; }
 }
 
 .field-control { display: block; }
+
+.field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.field-info {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  border: 1px solid #8b93a2;
+  border-radius: 50%;
+  color: #596274;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+}
+
+.field-info::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 9px);
+  z-index: 5;
+  width: 230px;
+  padding: 9px 11px;
+  border: 1px solid #202736;
+  background: #111827;
+  color: #f7f5ef;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.field-info:hover,
+.field-info:focus-visible {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.field-info:hover::after,
+.field-info:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
 
 input,
 select {
@@ -262,6 +373,16 @@ select:focus { border-color: var(--blue); outline: 1px solid var(--blue); }
   letter-spacing: 0;
 }
 
+.results dd.textual {
+  display: block;
+  color: var(--blue);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.2px;
+}
+
 .results p {
   margin: 18px 0 0;
   color: var(--muted);
@@ -299,6 +420,89 @@ select:focus { border-color: var(--blue); outline: 1px solid var(--blue); }
 }
 
 .quiet { color: var(--muted); font-size: 12px; text-decoration: underline; }
+
+.quant-reference {
+  margin-top: 12px;
+  border-top: 1px solid #727b89;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.quant-reference summary {
+  padding: 10px 2px;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quant-reference > p {
+  max-width: 860px;
+  margin: 0 0 14px;
+  line-height: 1.6;
+}
+
+.quant-reference > p a {
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.quant-reference-scroll {
+  max-height: min(62vh, 520px);
+  overflow: auto;
+  border-bottom: 1px solid var(--rule);
+  overscroll-behavior: contain;
+}
+
+.quant-reference table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.quant-reference th,
+.quant-reference td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--soft-rule);
+  vertical-align: top;
+}
+
+.quant-reference thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--paper);
+  color: #485169;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.quant-reference tbody th {
+  width: 112px;
+  font-weight: 600;
+}
+
+.quant-reference tbody td:last-child {
+  width: 126px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.quant-reference tbody tr:hover {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.quant-reference code {
+  color: var(--ink);
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+}
 
 footer {
   max-width: 1440px;

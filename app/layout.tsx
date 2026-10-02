@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: siteUrl(),
   title: {
-    default: "aidevtools.com — Free AI calculators",
+    default: "aidevtools.com — Every calculator you need when building AI applications",
     template: "%s | aidevtools.com",
   },
   description:
@@ -24,7 +24,7 @@ export default function RootLayout({
           <Link className="brand" href="/">
             aidevtools.com
           </Link>
-          <p className="tagline">Practical calculators for planning LLM deployments</p>
+          <p className="tagline">Every calculator you need when building AI applications</p>
           <a className="github-link" href="https://github.com/MeAmarP/aidevtools">
             GitHub ↗
           </a>

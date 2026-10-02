@@ -19,8 +19,7 @@ Open http://localhost:3000.
 | --- | --- |
 | `/tools/llm-vram-calculator` | Raw weights + architecture-aware KV cache + manual runtime overhead |
 | `/tools/gpu-compatibility-checker` | Single-GPU memory budget and headroom |
-| `/tools/gguf-size-calculator` | Nominal weight payload; explicitly excludes format overhead |
-| `/tools/quantization-calculator` | FP32 / FP16 / INT8 / INT4 raw storage comparison |
+| `/tools/gguf-size-calculator` | GGUF type payload estimates and storage savings versus FP16 / FP32 |
 | `/tools/llm-cost-calculator` | User-supplied rates, billable tokens, and daily request counts |
 | `/tools/llm-throughput-calculator` | Steady-state concurrency and aggregate output demand |
 

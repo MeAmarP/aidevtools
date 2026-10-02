@@ -1,9 +1,33 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { weights, memory, cost, throughput, GiB } from "../lib/calculations";
+import {
+  weights,
+  memory,
+  cost,
+  throughput,
+  GiB,
+  ggufQuantizationTypes,
+} from "../lib/calculations";
 test("raw weight bytes use binary GiB", () => {
   assert.equal(weights(8, 4), 4e9 / GiB);
   assert.equal(weights(8, 16), 16e9 / GiB);
+});
+test("GGUF type catalog includes documented types and block overhead", () => {
+  assert.equal(ggufQuantizationTypes.length, 32);
+  assert.equal(new Set(ggufQuantizationTypes.map(({ name }) => name)).size, 32);
+  assert.equal(
+    ggufQuantizationTypes.every(({ meaning }) => meaning.trim().length > 0),
+    true,
+  );
+  assert.equal(
+    ggufQuantizationTypes.find(({ name }) => name === "Q4_K")?.bitsPerWeight,
+    4.5,
+  );
+  assert.equal(
+    ggufQuantizationTypes.find(({ name }) => name === "IQ2_S")?.bitsPerWeight,
+    2.5,
+  );
+  assert.equal(weights(1, 4.5), 4.5e9 / 8 / GiB);
 });
 const example = {
   parametersB: 8,

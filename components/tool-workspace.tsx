@@ -23,6 +23,9 @@ export default function ToolWorkspace({ initialSlug = tools[0].slug }: { initial
       </nav>
       <section className="tool-pane" aria-labelledby="tool-title">
         <header className="tool-header">
+          {"question" in tool ? (
+            <p className="tool-question">{tool.question}</p>
+          ) : null}
           <h1 id="tool-title">{tool.title}</h1>
           <p className="intro">{tool.description}</p>
         </header>

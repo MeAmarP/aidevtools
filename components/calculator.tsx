@@ -1,10 +1,17 @@
 "use client";
 import { useState } from "react";
 import type { ToolSlug } from "@/lib/tools";
-import { memory, weights, cost, throughput } from "@/lib/calculations";
+import {
+  memory,
+  weights,
+  cost,
+  throughput,
+  ggufQuantizationTypes,
+} from "@/lib/calculations";
+import GgufQuantizationReference from "@/components/gguf-quantization-reference";
 const defaults: Record<string, number> = {
   parametersB: 8,
-  bits: 4,
+  quantType: ggufQuantizationTypes.findIndex((type) => type.name === "Q4_K"),
   layers: 32,
   kvHeads: 8,
   headDim: 128,
@@ -24,7 +31,7 @@ const defaults: Record<string, number> = {
 };
 const labels: Record<string, string> = {
   parametersB: "Parameters (billions)",
-  bits: "Nominal weight bits",
+  quantType: "GGUF tensor type",
   layers: "Transformer layers",
   kvHeads: "KV heads per layer",
   headDim: "Head dimension",
@@ -42,9 +49,30 @@ const labels: Record<string, string> = {
   rps: "Requests per second",
   latency: "Mean request latency (seconds)",
 };
+const parameterHelp: Record<string, string> = {
+  parametersB: "The model’s total parameter count, measured in billions.",
+  quantType:
+    "The GGUF tensor type used to estimate average storage per model weight.",
+  layers: "The number of transformer blocks in the model architecture.",
+  kvHeads: "The key-value attention heads stored in the KV cache per layer.",
+  headDim: "The vector width of each attention head.",
+  context: "The maximum tokens retained for each active sequence.",
+  sequences: "The number of requests held in memory at the same time.",
+  cacheBytes: "The bytes used for each KV-cache element, commonly 2 for FP16.",
+  overhead: "Extra memory reserved for runtime buffers and allocations.",
+  gpu: "The total physical VRAM available on the GPU being evaluated.",
+  reserved: "VRAM kept available for the display, operating system, and other processes.",
+  input: "The average number of input tokens sent in each request.",
+  output: "The average number of output tokens generated per request.",
+  inputRate: "Your provider’s price in USD per million input tokens.",
+  outputRate: "Your provider’s price in USD per million output tokens.",
+  requests: "The number of requests you expect to send each day.",
+  rps: "The average number of requests arriving each second.",
+  latency: "The average time, in seconds, from request arrival to completion.",
+};
 const architecture = [
   "parametersB",
-  "bits",
+  "quantType",
   "layers",
   "kvHeads",
   "headDim",
@@ -53,23 +81,27 @@ const architecture = [
   "cacheBytes",
   "overhead",
 ];
+const simpleArchitecture = ["parametersB", "quantType", "context", "overhead"];
 
 function resultParts(value: string) {
-  const match = value.match(/^(-?[\d,.]+(?:\.\d+)?)\s+(.+)$/);
-  return match ? { amount: match[1], unit: match[2] } : null;
+  const match = value.match(/^(-?[\d,.]+(?:\.\d+)?)(?:\s+(.+))?$/);
+  return match ? { amount: match[1], unit: match[2] ?? "" } : null;
 }
 
 export default function Calculator({ slug }: { slug: ToolSlug }) {
+  const [mode, setMode] = useState<"simple" | "advanced">("simple");
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       Object.entries(defaults).map(([k, v]) => [k, String(v)]),
     ),
   );
-  let fields: string[] = architecture;
+  const supportsAdvanced =
+    slug === "llm-vram-calculator" || slug === "gpu-compatibility-checker";
+  let fields: string[] =
+    supportsAdvanced && mode === "simple" ? simpleArchitecture : architecture;
   if (slug === "gpu-compatibility-checker")
-    fields = [...architecture, "gpu", "reserved"];
-  if (slug === "gguf-size-calculator") fields = ["parametersB", "bits"];
-  if (slug === "quantization-calculator") fields = ["parametersB"];
+    fields = ["gpu", "reserved", ...fields];
+  if (slug === "gguf-size-calculator") fields = ["parametersB", "quantType"];
   if (slug === "llm-cost-calculator")
     fields = ["input", "output", "inputRate", "outputRate", "requests"];
   if (slug === "llm-throughput-calculator")
@@ -77,15 +109,20 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
   const v = Object.fromEntries(
     Object.entries(values).map(([k, x]) => [k, Number(x)]),
   );
+  const selectedType = ggufQuantizationTypes[Number(values.quantType)];
   let rows: [string, string][] = [];
   let error = "";
-  const f = (x: number, unit: string) =>
-    `${x.toLocaleString("en-US", { maximumFractionDigits: 3 })} ${unit}`;
+  const f = (x: number, unit: string) => {
+    const amount = x.toLocaleString("en-US", { maximumFractionDigits: 3 });
+    return unit ? `${amount} ${unit}` : amount;
+  };
   try {
     if (
       fields.some(
-        (k) => values[k].trim() === "" || !Number.isFinite(v[k]) || v[k] < 0,
-      )
+        (k) =>
+          k !== "quantType" &&
+          (values[k].trim() === "" || !Number.isFinite(v[k]) || v[k] < 0),
+      ) || !selectedType
     )
       throw new Error("Enter finite, non-negative values in every field.");
     if (slug === "llm-cost-calculator") {
@@ -101,20 +138,25 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
         ["Average requests in flight", f(t.concurrency, "")],
         ["Aggregate output demand", f(t.tokens, "tokens/s")],
       ];
-    } else if (slug === "quantization-calculator")
-      rows = [32, 16, 8, 4].map((b) => [
-        `${b}-bit raw weights`,
-        f(weights(v.parametersB, b), "GiB"),
-      ]);
-    else if (slug === "gguf-size-calculator")
+    } else if (slug === "gguf-size-calculator") {
+      const payload = weights(v.parametersB, selectedType.bitsPerWeight);
+      const fp16Payload = weights(v.parametersB, 16);
+      const fp32Payload = weights(v.parametersB, 32);
       rows = [
-        ["Raw weight payload", f(weights(v.parametersB, v.bits), "GiB")],
-        ["GGUF metadata / mixed tensors", "Additional; format dependent"],
+        ["Estimated weight payload", f(payload, "GiB")],
+        [
+          "Storage saved vs FP16",
+          f(((fp16Payload - payload) / fp16Payload) * 100, "%"),
+        ],
+        [
+          "Storage saved vs FP32",
+          f(((fp32Payload - payload) / fp32Payload) * 100, "%"),
+        ],
       ];
-    else {
+    } else {
       const m = memory({
         parametersB: v.parametersB,
-        bits: v.bits,
+        bits: selectedType.bitsPerWeight,
         layers: v.layers,
         kvHeads: v.kvHeads,
         headDim: v.headDim,
@@ -123,33 +165,75 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
         cacheBytes: v.cacheBytes,
         overhead: v.overhead,
       });
-      rows = [
+      const memoryBreakdown: [string, string][] = [
         ["Raw weights", f(m.weight, "GiB")],
         ["KV cache", f(m.cache, "GiB")],
         ["Runtime overhead", f(v.overhead, "GiB")],
-        ["Estimated total", f(m.total, "GiB")],
       ];
       if (slug === "gpu-compatibility-checker") {
         if (v.gpu <= 0 || v.reserved >= v.gpu)
           throw new Error("GPU capacity must exceed reserved memory.");
         const headroom = v.gpu - v.reserved - m.total;
-        rows.push(
-          ["Remaining headroom", f(headroom, "GiB")],
+        const compatibilitySummary: [string, string][] = [
           [
-            "Memory assessment",
+            "Estimated fit",
             headroom >= 0
               ? "Within estimated budget"
               : "Exceeds estimated budget",
           ],
-        );
+          ["Estimated headroom", f(headroom, "GiB")],
+          ["Estimated total", f(m.total, "GiB")],
+        ];
+        if (headroom < 0)
+          compatibilitySummary.splice(1, 0, [
+            "Possible adjustments",
+            "Reduce context, concurrency, or weight bits",
+          ]);
+        rows =
+          mode === "advanced"
+            ? [...compatibilitySummary, ...memoryBreakdown]
+            : compatibilitySummary;
+      } else {
+        rows = [...memoryBreakdown, ["Estimated total", f(m.total, "GiB")]];
       }
     }
   } catch (e) {
     error = e instanceof Error ? e.message : "Check your inputs.";
   }
+  const resultHeading =
+    slug === "llm-cost-calculator"
+      ? "Estimated cost"
+      : slug === "llm-throughput-calculator"
+        ? "Estimated workload"
+        : slug === "gguf-size-calculator"
+          ? "Estimated file payload"
+          : slug === "gpu-compatibility-checker"
+            ? "Estimated compatibility"
+            : "Estimated memory usage";
   return (
     <div className="calculator">
       <div className="inputs">
+        {supportsAdvanced ? (
+          <div className="mode-bar">
+            <span>Configuration</span>
+            <div className="mode-switch" aria-label="Configuration detail">
+              <button
+                type="button"
+                aria-pressed={mode === "simple"}
+                onClick={() => setMode("simple")}
+              >
+                Simple
+              </button>
+              <button
+                type="button"
+                aria-pressed={mode === "advanced"}
+                onClick={() => setMode("advanced")}
+              >
+                Advanced
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div className="calc-heading">
           <span>Parameter</span>
           <span>Value</span>
@@ -169,23 +253,56 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
         <div className="fields">
           {fields.map((k) => (
             <label key={k} htmlFor={k}>
-              <span>{labels[k]}</span>
+              <span className="field-label">
+                <span>{labels[k]}</span>
+                {parameterHelp[k] ? (
+                  <span
+                    className="field-info"
+                    role="note"
+                    tabIndex={0}
+                    aria-label={parameterHelp[k]}
+                    data-tooltip={parameterHelp[k]}
+                  >
+                    i
+                  </span>
+                ) : null}
+              </span>
               <span className="field-control">
-                {k === "bits" || k === "cacheBytes" ? (
+                {k === "quantType" || k === "cacheBytes" ? (
                   <select
                     id={k}
                     value={values[k]}
                     onChange={(e) =>
-                      setValues({ ...values, [k]: e.target.value })
+                      setValues((current) => ({
+                        ...current,
+                        [k]: e.target.value,
+                      }))
                     }
                   >
-                    {(k === "bits" ? [4, 5, 6, 8, 16, 32] : [1, 2, 4]).map(
-                      (n) => (
-                        <option key={n} value={n}>
-                          {n}
-                        </option>
-                      ),
-                    )}
+                    {k === "quantType"
+                      ? [
+                          ...new Set(
+                            ggufQuantizationTypes.map((type) => type.group),
+                          ),
+                        ].map((group) => (
+                          <optgroup key={group} label={group}>
+                            {ggufQuantizationTypes
+                              .filter((type) => type.group === group)
+                              .map((type) => (
+                                <option
+                                  key={type.name}
+                                  value={ggufQuantizationTypes.indexOf(type)}
+                                >
+                                  {type.name} ({type.bitsPerWeight} bpw)
+                                </option>
+                              ))}
+                          </optgroup>
+                        ))
+                      : [1, 2, 4].map((n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        ))}
                   </select>
                 ) : (
                   <input
@@ -208,7 +325,10 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
                     }
                     value={values[k]}
                     onChange={(e) =>
-                      setValues({ ...values, [k]: e.target.value })
+                      setValues((current) => ({
+                        ...current,
+                        [k]: e.target.value,
+                      }))
                     }
                   />
                 )}
@@ -216,12 +336,15 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
             </label>
           ))}
         </div>
-        <p className="input-note">
-          Illustrative defaults · Change these to match your workload.
-        </p>
+        {slug === "gguf-size-calculator" ? (
+          <GgufQuantizationReference />
+        ) : null}
+        {supportsAdvanced && mode === "simple" ? (
+          <p className="input-note">Switch to Advanced for model-specific estimates.</p>
+        ) : null}
       </div>
       <div className="results" aria-live="polite" aria-atomic="true">
-        <div className="eyebrow">Estimated memory usage</div>
+        <div className="eyebrow">{resultHeading}</div>
         {error ? (
           <p role="alert" className="error">
             {error}
@@ -233,11 +356,11 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
               return (
                 <div key={label}>
                   <dt>{label}</dt>
-                  <dd>
+                  <dd className={parts ? undefined : "textual"}>
                     {parts ? (
                       <>
                         <span>{parts.amount}</span>
-                        <small>{parts.unit}</small>
+                        {parts.unit ? <small>{parts.unit}</small> : null}
                       </>
                     ) : (
                       value
@@ -249,7 +372,9 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
           </dl>
         )}
         <p>
-          Transparent math. Instant results.
+          {slug === "gpu-compatibility-checker"
+            ? "Estimate only. A fit does not guarantee runtime support or inference speed."
+            : "Transparent math. Instant results."}
           <br />
           All memory values use GiB (2³⁰ bytes).
         </p>
