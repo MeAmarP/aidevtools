@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { siteUrl } from "@/lib/site";
+import "@fontsource-variable/manrope";
+import "@fontsource-variable/space-grotesk";
 import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: siteUrl(),

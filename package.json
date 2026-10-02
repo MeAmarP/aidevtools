@@ -23,6 +23,8 @@
   },
   "homepage": "https://github.com/MeAmarP/aidevtools#readme",
   "dependencies": {
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource-variable/space-grotesk": "^5.3.0",
     "js-tiktoken": "^1.0.21",
     "next": "^16.3.8",
     "react": "^19.3.0",
