@@ -24,7 +24,7 @@ body {
 
 a { color: inherit; text-decoration: none; }
 a:hover { color: var(--blue); }
-button, input, select { font: inherit; touch-action: manipulation; }
+button, input, select, textarea { font: inherit; touch-action: manipulation; }
 :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 
 .nav {
@@ -74,7 +74,7 @@ main { max-width: 1440px; margin: 0 auto; }
 
 .tool-list {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 0 36px;
   border-bottom: 1px solid #737b89;
 }
@@ -82,7 +82,7 @@ main { max-width: 1440px; margin: 0 auto; }
 .tool-list button {
   position: relative;
   min-height: 68px;
-  padding: 0 16px;
+  padding: 10px 14px;
   border: 0;
   background: transparent;
   color: #30394b;
@@ -103,8 +103,8 @@ main { max-width: 1440px; margin: 0 auto; }
 }
 
 .tool-list button:hover { color: var(--blue); }
-.tool-list button[aria-pressed="true"] { color: var(--blue); }
-.tool-list button[aria-pressed="true"]::after { background: var(--blue); }
+.tool-list button[aria-selected="true"] { color: var(--blue); }
+.tool-list button[aria-selected="true"]::after { background: var(--blue); }
 
 .tool-pane { min-width: 0; padding: 48px 36px 26px; }
 
@@ -288,7 +288,8 @@ main { max-width: 1440px; margin: 0 auto; }
 }
 
 input,
-select {
+select,
+textarea {
   display: block;
   width: 100%;
   min-width: 0;
@@ -304,10 +305,23 @@ select {
 }
 
 input:hover,
-select:hover { border-color: #9299a6; }
+select:hover,
+textarea:hover { border-color: #9299a6; }
 
 input:focus,
-select:focus { border-color: var(--blue); outline: 1px solid var(--blue); }
+select:focus,
+textarea:focus { border-color: var(--blue); outline: 1px solid var(--blue); }
+
+textarea {
+  min-height: 144px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.fields label:has(textarea) {
+  align-items: start;
+  padding-block: 12px;
+}
 
 .input-note {
   margin: 14px 0 0;
@@ -545,10 +559,8 @@ footer div { display: flex; gap: 20px; }
   .brand { padding-right: 14px; font-size: 28px; }
   .tagline { display: none; }
   .github-link { grid-column: 3; }
-  .tool-list { display: flex; margin: 0 20px; overflow-x: auto; }
-  .tool-list { scrollbar-width: none; }
-  .tool-list::-webkit-scrollbar { display: none; }
-  .tool-list button { min-width: 176px; min-height: 58px; flex: 0 0 auto; }
+  .tool-list { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 20px; }
+  .tool-list button { min-height: 58px; padding: 10px 8px; }
   .tool-pane { padding: 38px 20px 24px; }
   .calculator { grid-template-columns: 1fr; }
   .results { border-top: 1px solid #7b8391; border-left: 0; padding: 24px 0 0; }

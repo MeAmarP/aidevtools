@@ -74,6 +74,50 @@ export const tools = [
     caveat:
       "This is workload sizing, not a hardware benchmark. Actual capacity depends on prefill, batching, queueing, runtime, and model. Burst traffic requires additional headroom.",
   },
+  {
+    slug: "llm-token-calculator",
+    title: "LLM Token Counter",
+    question: "How many tokens are in this text?",
+    category: "Text planning",
+    mark: "06",
+    description:
+      "Count text with the o200k_base tokenizer encoding and inspect its character and word totals.",
+    formula: "Token count = number of IDs produced by encoding the input with o200k_base.",
+    detail:
+      "Paste plain text to count its tokens locally in your browser. The o200k_base encoding is used by GPT-4o and related models; it is a useful reference, not a universal tokenizer.",
+    caveat:
+      "Other model families use different tokenizers. Chat roles, tool calls, image/audio inputs, and provider-added message framing are not included. Counts may differ from a model's actual billable or context-window token count.",
+  },
+  {
+    slug: "llm-context-window-calculator",
+    title: "Context Window Calculator",
+    question: "Will this request fit in the model context window?",
+    category: "Text planning",
+    mark: "07",
+    description:
+      "Compare input and planned output tokens with a model's total context limit.",
+    formula:
+      "Remaining tokens = context limit − input tokens − planned output tokens; maximum output = max(0, context limit − input tokens).",
+    detail:
+      "Enter the model's advertised context limit, total prompt tokens (including system instructions and history), and desired output budget. The fit check includes both input and planned output.",
+    caveat:
+      "Some APIs count message framing, tools, images, audio, or reasoning tokens differently. Leave headroom for hidden overhead and verify against the target model's documentation.",
+  },
+  {
+    slug: "llm-batch-size-calculator",
+    title: "LLM Batch Size Calculator",
+    question: "How many sequences fit in my GPU memory budget?",
+    category: "Serving capacity",
+    mark: "08",
+    description:
+      "Estimate a memory-bounded maximum sequence batch from model weights, KV cache, and GPU budget.",
+    formula:
+      "Maximum sequences = floor((GPU GiB − reserved GiB − weights GiB − overhead GiB) / KV-cache GiB per sequence).",
+    detail:
+      "Provide the model architecture, context length, cache precision, weight type, and usable GPU memory. The calculation treats each sequence as using the full configured context length.",
+    caveat:
+      "This is a memory upper bound, not a recommended or throughput-optimal batch size. Runtime workspaces, fragmentation, padding, prefill, and architecture-specific attention behavior can lower the actual batch size. The tool assumes a non-zero KV cache and one GPU.",
+  },
 ] as const;
 export const plannedTools = [
   "Token Counter",

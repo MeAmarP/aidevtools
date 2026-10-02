@@ -22,19 +22,54 @@ Open http://localhost:3000.
 | `/tools/gguf-size-calculator` | GGUF type payload estimates and storage savings versus FP16 / FP32 |
 | `/tools/llm-cost-calculator` | User-supplied rates, billable tokens, and daily request counts |
 | `/tools/llm-throughput-calculator` | Steady-state concurrency and aggregate output demand |
+| `/tools/llm-token-calculator` | Local token counts using the o200k_base encoding |
+| `/tools/llm-context-window-calculator` | Input/output budget against a model context limit |
+| `/tools/llm-batch-size-calculator` | Memory-bounded maximum sequences from GPU and KV-cache budgets |
 
 All calculations run client-side. Defaults are illustrative. Memory is displayed in **GiB**, not decimal GB. Every page includes formulas and limitations. No provider pricing or model architectures are asserted from unmaintained presets.
 
-## Roadmap
+## Development plan
 
-- Token counter: exact counts only for supported tokenizers; label approximations.
-- RAG chunking playground: visualize boundaries and overlap with an explicit tokenizer.
-- Embedding similarity: optional small browser model, model download consent, and worker execution.
-- VLM image token estimates: provider-specific rules with source links and update dates.
-- Add actual model metadata and GGUF tensor inspection before exact model recommendations.
-- Add Tailwind if useful as the design system grows; this initial version uses plain CSS.
+This checklist reflects the current shipped status of the calculator suite and the next items still to build.
 
-Planned tools do not have placeholder indexed routes.
+### LLM
+
+- [x] Token calculator — available at `/tools/llm-token-calculator` (o200k_base encoding).
+- [x] LLM cost calculator — available at `/tools/llm-cost-calculator`.
+- [x] VRAM calculator — available at `/tools/llm-vram-calculator`.
+- [x] Context window calculator — available at `/tools/llm-context-window-calculator`.
+- [x] KV-cache calculator — included in the `llm-vram-calculator` estimate and sizing model.
+- [x] Batch-size calculator — available at `/tools/llm-batch-size-calculator`.
+- [x] Throughput calculator — available at `/tools/llm-throughput-calculator`.
+
+### RAG
+
+- [ ] Chunk size calculator
+- [ ] Chunk overlap calculator
+- [ ] Embedding cost calculator
+- [ ] Vector DB storage calculator
+- [ ] Retrieval precision calculator
+
+### GPU
+
+- [x] GPU VRAM calculator — available at `/tools/llm-vram-calculator` and `/tools/gpu-compatibility-checker`.
+- [ ] Multi-GPU calculator
+- [ ] GPU utilization calculator
+- [x] Model fitting calculator — available at `/tools/gpu-compatibility-checker`.
+
+### AI deployment
+
+- [x] API cost calculator — available at `/tools/llm-cost-calculator`.
+- [ ] Server capacity calculator
+- [x] Requests/sec calculator — available at `/tools/llm-throughput-calculator`.
+- [x] Concurrency calculator — available at `/tools/llm-throughput-calculator`.
+- [ ] Latency calculator
+
+### Notes
+
+- The current toolset already includes the LLM memory, cost, and throughput calculators.
+- Planned RAG and GPU expansion items still need dedicated calculator pages and validation.
+- Planned tools do not have placeholder indexed routes.
 
 ## Validation
 

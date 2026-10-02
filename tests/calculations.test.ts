@@ -5,9 +5,12 @@ import {
   memory,
   cost,
   throughput,
+  contextWindow,
+  batchSize,
   GiB,
   ggufQuantizationTypes,
 } from "../lib/calculations";
+import { countTokens } from "../lib/tokenizer";
 test("raw weight bytes use binary GiB", () => {
   assert.equal(weights(8, 4), 4e9 / GiB);
   assert.equal(weights(8, 16), 16e9 / GiB);
@@ -60,6 +63,34 @@ test("cost charges both token directions and permits zero usage", () => {
 });
 test("throughput uses Little's Law", () => {
   assert.deepEqual(throughput(2, 5, 500), { concurrency: 10, tokens: 1000 });
+});
+test("token counter uses the documented o200k_base encoding", () => {
+  assert.equal(countTokens("Hello, world!"), 4);
+  assert.equal(countTokens(""), 0);
+});
+test("context window separates input, output, and available token budget", () => {
+  assert.deepEqual(contextWindow(8192, 6000, 1500), {
+    totalTokens: 7500,
+    remainingTokens: 692,
+    maxOutputTokens: 2192,
+    utilization: (7500 / 8192) * 100,
+    fits: true,
+  });
+  assert.equal(contextWindow(4096, 4000, 200).fits, false);
+  assert.equal(contextWindow(4096, 4000, 200).maxOutputTokens, 96);
+  assert.throws(() => contextWindow(8192, 1.5, 10));
+});
+test("batch size floors the memory budget by per-sequence KV cache", () => {
+  const result = batchSize({
+    ...example,
+    gpu: 16,
+    reserved: 2,
+  });
+  assert.equal(result.weight, 4e9 / GiB);
+  assert.equal(result.perSequenceCache, 1);
+  assert.equal(result.maxSequences, Math.floor(16 - 2 - 1 - 4e9 / GiB));
+  assert.equal(batchSize({ ...example, gpu: 4, reserved: 2 }).maxSequences, 0);
+  assert.throws(() => batchSize({ ...example, gpu: 4, reserved: 4 }));
 });
 test("negative, nonfinite and overflowing inputs are rejected", () => {
   assert.throws(() => weights(-1, 4));
