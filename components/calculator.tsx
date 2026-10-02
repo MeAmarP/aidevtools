@@ -1,15 +1,17 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ToolSlug } from "@/lib/tools";
 import {
   memory,
   weights,
   cost,
   throughput,
+  contextWindow,
+  batchSize,
   ggufQuantizationTypes,
 } from "@/lib/calculations";
 import GgufQuantizationReference from "@/components/gguf-quantization-reference";
-const defaults: Record<string, number> = {
+const defaults: Record<string, number | string> = {
   parametersB: 8,
   quantType: ggufQuantizationTypes.findIndex((type) => type.name === "Q4_K"),
   layers: 32,
@@ -28,6 +30,10 @@ const defaults: Record<string, number> = {
   requests: 1000,
   rps: 2,
   latency: 5,
+  contextLimit: 8192,
+  inputTokens: 6000,
+  outputTokens: 1500,
+  tokenText: "",
 };
 const labels: Record<string, string> = {
   parametersB: "Parameters (billions)",
@@ -48,6 +54,10 @@ const labels: Record<string, string> = {
   requests: "Requests per day",
   rps: "Requests per second",
   latency: "Mean request latency (seconds)",
+  contextLimit: "Model context limit (tokens)",
+  inputTokens: "Input and history (tokens)",
+  outputTokens: "Planned output (tokens)",
+  tokenText: "Text to count",
 };
 const parameterHelp: Record<string, string> = {
   parametersB: "The model’s total parameter count, measured in billions.",
@@ -69,6 +79,10 @@ const parameterHelp: Record<string, string> = {
   requests: "The number of requests you expect to send each day.",
   rps: "The average number of requests arriving each second.",
   latency: "The average time, in seconds, from request arrival to completion.",
+  contextLimit: "The total context capacity advertised for the target model.",
+  inputTokens: "All prompt tokens, including instructions and conversation history.",
+  outputTokens: "The output-token budget requested for this completion.",
+  tokenText: "Text is counted locally using the o200k_base tokenizer encoding.",
 };
 const architecture = [
   "parametersB",
@@ -90,6 +104,7 @@ function resultParts(value: string) {
 
 export default function Calculator({ slug }: { slug: ToolSlug }) {
   const [mode, setMode] = useState<"simple" | "advanced">("simple");
+  const [tokenCount, setTokenCount] = useState<number | null>(null);
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       Object.entries(defaults).map(([k, v]) => [k, String(v)]),
@@ -97,6 +112,16 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
   );
   const supportsAdvanced =
     slug === "llm-vram-calculator" || slug === "gpu-compatibility-checker";
+  useEffect(() => {
+    if (slug !== "llm-token-calculator") return;
+    let cancelled = false;
+    import("@/lib/tokenizer").then(({ countTokens }) => {
+      if (!cancelled) setTokenCount(countTokens(values.tokenText));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, values.tokenText]);
   let fields: string[] =
     supportsAdvanced && mode === "simple" ? simpleArchitecture : architecture;
   if (slug === "gpu-compatibility-checker")
@@ -106,6 +131,22 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
     fields = ["input", "output", "inputRate", "outputRate", "requests"];
   if (slug === "llm-throughput-calculator")
     fields = ["rps", "latency", "output"];
+  if (slug === "llm-token-calculator") fields = ["tokenText"];
+  if (slug === "llm-context-window-calculator")
+    fields = ["contextLimit", "inputTokens", "outputTokens"];
+  if (slug === "llm-batch-size-calculator")
+    fields = [
+      "gpu",
+      "reserved",
+      "parametersB",
+      "quantType",
+      "layers",
+      "kvHeads",
+      "headDim",
+      "context",
+      "cacheBytes",
+      "overhead",
+    ];
   const v = Object.fromEntries(
     Object.entries(values).map(([k, x]) => [k, Number(x)]),
   );
@@ -121,11 +162,52 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
       fields.some(
         (k) =>
           k !== "quantType" &&
+            k !== "tokenText" &&
           (values[k].trim() === "" || !Number.isFinite(v[k]) || v[k] < 0),
       ) || !selectedType
     )
       throw new Error("Enter finite, non-negative values in every field.");
-    if (slug === "llm-cost-calculator") {
+    if (slug === "llm-token-calculator") {
+      const wordCount = values.tokenText.trim()
+        ? values.tokenText.trim().split(/\s+/u).length
+        : 0;
+      rows = [
+        [
+          "Token count (o200k_base)",
+          tokenCount === null ? "Loading tokenizer…" : f(tokenCount, "tokens"),
+        ],
+        ["Words", f(wordCount, "")],
+        ["Characters", f(values.tokenText.length, "")],
+      ];
+    } else if (slug === "llm-context-window-calculator") {
+      const c = contextWindow(v.contextLimit, v.inputTokens, v.outputTokens);
+      rows = [
+        ["Context status", c.fits ? "Within context limit" : "Exceeds context limit"],
+        ["Total planned tokens", f(c.totalTokens, "tokens")],
+        ["Remaining tokens", f(c.remainingTokens, "tokens")],
+        ["Maximum output for this input", f(c.maxOutputTokens, "tokens")],
+        ["Context utilization", f(c.utilization, "%")],
+      ];
+    } else if (slug === "llm-batch-size-calculator") {
+      const b = batchSize({
+        gpu: v.gpu,
+        reserved: v.reserved,
+        parametersB: v.parametersB,
+        bits: selectedType.bitsPerWeight,
+        layers: v.layers,
+        kvHeads: v.kvHeads,
+        headDim: v.headDim,
+        context: v.context,
+        cacheBytes: v.cacheBytes,
+        overhead: v.overhead,
+      });
+      rows = [
+        ["Maximum sequences by memory", f(b.maxSequences, "sequences")],
+        ["Available for KV cache", f(b.available, "GiB")],
+        ["KV cache per sequence", f(b.perSequenceCache, "GiB")],
+        ["Model weights", f(b.weight, "GiB")],
+      ];
+    } else if (slug === "llm-cost-calculator") {
       const c = cost(v.input, v.output, v.inputRate, v.outputRate, v.requests);
       rows = [
         ["Daily cost", f(c.daily, "USD")],
@@ -207,6 +289,12 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
         ? "Estimated workload"
         : slug === "gguf-size-calculator"
           ? "Estimated file payload"
+            : slug === "llm-token-calculator"
+              ? "Text measurement"
+              : slug === "llm-context-window-calculator"
+                ? "Context budget"
+                : slug === "llm-batch-size-calculator"
+                  ? "Memory-bounded batch size"
           : slug === "gpu-compatibility-checker"
             ? "Estimated compatibility"
             : "Estimated memory usage";
@@ -268,7 +356,16 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
                 ) : null}
               </span>
               <span className="field-control">
-                {k === "quantType" || k === "cacheBytes" ? (
+                {k === "tokenText" ? (
+                  <textarea
+                    id={k}
+                    rows={7}
+                    value={values[k]}
+                    onChange={(e) =>
+                      setValues((current) => ({ ...current, [k]: e.target.value }))
+                    }
+                  />
+                ) : k === "quantType" || k === "cacheBytes" ? (
                   <select
                     id={k}
                     value={values[k]}
@@ -372,11 +469,19 @@ export default function Calculator({ slug }: { slug: ToolSlug }) {
           </dl>
         )}
         <p>
-          {slug === "gpu-compatibility-checker"
+          {slug === "gpu-compatibility-checker" || slug === "llm-batch-size-calculator"
             ? "Estimate only. A fit does not guarantee runtime support or inference speed."
+            : slug === "llm-token-calculator"
+              ? "Counts use o200k_base; tokenizers and message overhead vary by model."
             : "Transparent math. Instant results."}
-          <br />
-          All memory values use GiB (2³⁰ bytes).
+          {slug === "llm-vram-calculator" ||
+          slug === "gpu-compatibility-checker" ||
+          slug === "llm-batch-size-calculator" ? (
+            <>
+              <br />
+              All memory values use GiB (2³⁰ bytes).
+            </>
+          ) : null}
         </p>
       </div>
     </div>

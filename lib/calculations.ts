@@ -268,3 +268,53 @@ export function throughput(rps: number, latency: number, output: number) {
     throw new Error("Inputs exceed the supported numerical range.");
   return { concurrency, tokens };
 }
+
+export function contextWindow(
+  contextLimit: number,
+  inputTokens: number,
+  outputTokens: number,
+) {
+  valid([contextLimit, inputTokens, outputTokens]);
+  if (
+    !Number.isInteger(contextLimit) ||
+    contextLimit < 1 ||
+    !Number.isInteger(inputTokens) ||
+    !Number.isInteger(outputTokens)
+  )
+    throw new Error("Context and token counts must be whole numbers.");
+  const totalTokens = inputTokens + outputTokens;
+  const remainingTokens = contextLimit - totalTokens;
+  const maxOutputTokens = Math.max(0, contextLimit - inputTokens);
+  if (![totalTokens, remainingTokens, maxOutputTokens].every(Number.isFinite))
+    throw new Error("Inputs exceed the supported numerical range.");
+  return {
+    totalTokens,
+    remainingTokens,
+    maxOutputTokens,
+    utilization: (totalTokens / contextLimit) * 100,
+    fits: remainingTokens >= 0,
+  };
+}
+
+export type BatchSizeInput = Omit<MemoryInput, "sequences"> & {
+  gpu: number;
+  reserved: number;
+};
+
+export function batchSize(input: BatchSizeInput) {
+  valid(Object.values(input));
+  if (input.gpu <= 0 || input.reserved >= input.gpu)
+    throw new Error("GPU capacity must exceed reserved memory.");
+  const { gpu, reserved, ...model } = input;
+  const singleSequence = memory({ ...model, sequences: 1 });
+  const available = gpu - reserved - model.overhead - singleSequence.weight;
+  const maxSequences = Math.max(0, Math.floor(available / singleSequence.cache));
+  if (![available, maxSequences].every(Number.isFinite))
+    throw new Error("Inputs exceed the supported numerical range.");
+  return {
+    maxSequences,
+    available,
+    weight: singleSequence.weight,
+    perSequenceCache: singleSequence.cache,
+  };
+}
