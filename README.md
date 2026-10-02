@@ -37,18 +37,6 @@ All calculations run client-side. Defaults are illustrative. Memory is displayed
 
 Planned tools do not have placeholder indexed routes.
 
-## Deploy on Vercel
-
-1. Import `MeAmarP/aidevtools` into Vercel.
-2. Select Next.js; root directory is the repository root. Default install/build settings work (`npm ci` / `npm run build`). No database or API keys required.
-3. Use the repository's default branch, `master`, for production.
-4. After obtaining the actual deployment URL, set `NEXT_PUBLIC_SITE_URL` to its HTTPS origin and redeploy. Later replace it with your verified custom domain. This enables canonical tool URLs and sitemap entries without claiming an unregistered domain.
-5. Confirm `/robots.txt`, `/sitemap.xml`, and the calculator pages on your deployment. Keep preview deployments out of search indexing using Vercel's deployment controls.
-
-Vercel Hobby is limited to non-commercial personal use. Use a plan permitting commercial use for an ad-supported site. See https://vercel.com/docs/plans/hobby and https://vercel.com/docs/limits/fair-use-guidelines.
-
-AdSense, analytics, and tracking are **not configured**. Before adding them, update privacy disclosures, implement applicable consent handling, and configure your publisher/account identifiers. No fabricated `ads.txt` entry is supplied.
-
 ## Validation
 
 ```sh
